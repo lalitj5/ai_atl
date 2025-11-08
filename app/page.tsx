@@ -7,6 +7,9 @@ import DestinationSearch from "@/components/destination-search"
 import RouteComparison from "@/components/route-comparison"
 import { mapboxService, type Route } from "@/lib/services/mapboxService"
 import { useGeolocation } from "@/hooks/useGeolocation"
+import { useMicrophone } from "@/hooks/useMicrophone"
+import { Mic, MicOff } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 type NavigationState = "idle" | "searching" | "navigating" | "comparing-routes"
 
@@ -27,6 +30,9 @@ export default function Home() {
   const { coordinates: currentLocation, error: locationErrorData } = useGeolocation({
     watch: navigationState === "navigating",
   })
+
+  // Microphone hook
+  const { isListening, isRecording, transcription, toggleMute, manualStopRecording } = useMicrophone()
 
   // Handle location errors
   useEffect(() => {
@@ -185,6 +191,29 @@ export default function Home() {
           }}
         />
       )}
+
+      {/* Microphone Button - Top Right Corner */}
+      <div className="absolute top-6 right-6 z-30">
+        <Button
+          onClick={() => {
+            if (isRecording) {
+              // If currently recording, stop the recording
+              manualStopRecording()
+            } else {
+              // Otherwise toggle mute/unmute
+              toggleMute()
+            }
+          }}
+          size="lg"
+          variant={!isListening ? "destructive" : "default"}
+          className={`h-14 w-14 rounded-full shadow-lg hover:scale-105 transition-transform ${
+            isRecording ? "animate-pulse ring-4 ring-red-500" : ""
+          }`}
+          aria-label={!isListening ? "Unmute microphone" : isRecording ? "Stop recording" : "Mute microphone"}
+        >
+          {!isListening ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
+        </Button>
+      </div>
     </div>
   )
 }

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd voice input with microphone button and Azure Whisper transcription\n\nImplemented natural language voice input with wake word detection (\"Hey Journey\") and Azure OpenAI Whisper for transcription. The microphone button is now visible in the top-right corner and defaults to unmuted state for seamless voice interaction.\n\nTechnical additions:\n- Created useMicrophone hook for wake word detection and audio recording\n- Added microphoneService for browser speech recognition and audio processing\n- Integrated Azure Whisper API via Express backend server for transcription\n- Implemented automatic silence detection to stop recording\n- Added support for both transcription and translation modes\n\nUI changes:\n- Added microphone toggle button with visual states (muted/unmuted/recording)\n- Microphone defaults to unmuted on app start\n- Recording state shown with pulsing animation and red ring\n\nDependencies added:\n- express, cors, multer for backend server\n- openai SDK for Azure Whisper integration\n- dotenv for environment variable management\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
