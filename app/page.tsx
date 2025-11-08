@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import MapView from "@/components/map-view"
 import NavigationInfo from "@/components/navigation-info"
 import DestinationSearch from "@/components/destination-search"
-import ConversationalInput from "@/components/conversational-input"
 import RouteComparison from "@/components/route-comparison"
 import { mapboxService, type Route } from "@/lib/services/mapboxService"
 import { useGeolocation } from "@/hooks/useGeolocation"
@@ -159,17 +158,6 @@ export default function Home() {
           </div>
         )}
       </div>
-
-      {/* Conversational Input - Bottom Floating */}
-      {navigationState === "navigating" && route && destination && (
-        <ConversationalInput
-          onRouteModified={handleModifyRoute}
-          currentRoute={{
-            origin: getOrigin(),
-            destination: destination.coordinates,
-          }}
-        />
-      )}
 
       {/* Route Comparison - Bottom Sheet */}
       {showComparison && alternativeRoutes.length > 0 && (

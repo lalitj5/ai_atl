@@ -1,14 +1,27 @@
 "use client"
 
-import { ChevronRight, MapPin, Clock, Navigation } from "lucide-react"
+import { useState } from "react"
+import { ChevronRight, MapPin, Clock, Navigation, Send, Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { type Route } from "@/lib/services/mapboxService"
+import { type Route, type RouteStep } from "@/lib/services/mapboxService"
 
 interface NavigationInfoProps {
   route: Route
   destination: { name: string; coordinates: [number, number] } | null
   currentLocation: { lat: number; lng: number } | null
-  onModifyRoute: () => void
+  onModifyRoute: (modifiedParams: {
+    avoid?: string[]
+    waypoints?: [number, number][]
+    profile?: "driving" | "walking" | "cycling" | "driving-traffic"
+    explanation: string
+  }) => void
+}
+
+interface Message {
+  id: string
+  type: "user" | "system"
+  content: string
+  timestamp: Date
 }
 
 // Calculate distance between two coordinates in meters
@@ -109,6 +122,11 @@ export default function NavigationInfo({
   currentLocation,
   onModifyRoute,
 }: NavigationInfoProps) {
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [inputValue, setInputValue] = useState("")
+  const [messages, setMessages] = useState<Message[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
   const { step: currentStep, distanceToStep } = findCurrentStep(route, currentLocation)
   const nextStepDistance = currentStep
     ? distanceToStep < 50
@@ -116,8 +134,81 @@ export default function NavigationInfo({
       : formatDistance(distanceToStep)
     : ""
 
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || !destination) return
+
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: "user",
+      content: inputValue,
+      timestamp: new Date(),
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+    const query = inputValue
+    setInputValue("")
+    setIsLoading(true)
+
+    try {
+      // Get origin based on current location
+      const origin = currentLocation
+        ? [currentLocation.lng, currentLocation.lat] as [number, number]
+        : [-122.4194, 37.7749] as [number, number]
+
+      // Call LLM API
+      const response = await fetch("/api/route-modification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userRequest: query,
+          currentRoute: {
+            origin,
+            destination: destination.coordinates,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to process route modification")
+      }
+
+      const data = await response.json()
+
+      // Add system message with explanation
+      const systemMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "system",
+        content: data.explanation || "I'll modify your route as requested.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, systemMessage])
+      setIsLoading(false)
+
+      // Notify parent with modified parameters
+      onModifyRoute({
+        avoid: data.modifiedParams.avoid,
+        waypoints: data.modifiedParams.waypoints,
+        profile: data.modifiedParams.profile,
+        explanation: data.explanation,
+      })
+    } catch (error) {
+      console.error("Error processing route modification:", error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "system",
+        content: "Sorry, I couldn't process that request. Please try again or rephrase your request.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+      setIsLoading(false)
+    }
+  }
+
   return (
-    <div className="w-full h-full flex flex-col p-6 bg-background">
+    <div className="w-full h-full flex flex-col p-6 bg-background overflow-y-auto">
       <div className="floating-card bg-card rounded-2xl p-6 space-y-4">
         {/* Current Direction */}
         <div className="flex items-start gap-4">
@@ -164,14 +255,85 @@ export default function NavigationInfo({
         )}
 
         {/* Modify Route Button */}
-        <Button
-          onClick={onModifyRoute}
-          variant="outline"
-          className="w-full touch-target border border-border/30 hover:bg-muted/50 text-base font-semibold bg-transparent"
-        >
-          Ask to Modify Route
-          <ChevronRight className="w-4 h-4 ml-2" />
-        </Button>
+        {!isChatOpen && (
+          <Button
+            onClick={() => setIsChatOpen(true)}
+            variant="outline"
+            className="w-full touch-target border border-border/30 hover:bg-muted/50 text-base font-semibold bg-transparent"
+          >
+            Ask to Modify Route
+            <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
+        )}
+
+        {/* Chat Interface */}
+        {isChatOpen && (
+          <div className="pt-4 border-t border-border/30 space-y-3">
+            {/* Chat Header */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground">Modify Route</p>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsChatOpen(false)}
+                className="h-8 w-8"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Messages */}
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {messages.length === 0 && (
+                <div className="text-center py-4">
+                  <p className="text-xs text-muted-foreground">
+                    Try: "Make it scenic" or "Avoid highways"
+                  </p>
+                </div>
+              )}
+              {messages.map((msg) => (
+                <div key={msg.id} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`max-w-xs px-3 py-2 rounded-xl text-xs ${
+                      msg.type === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-muted px-3 py-2 rounded-xl">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Type your request..."
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                className="flex-1 bg-input rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              <Button
+                size="icon"
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() || isLoading}
+                className="h-9 w-9 bg-primary hover:bg-primary/90"
+              >
+                <Send className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

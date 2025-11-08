@@ -102,10 +102,10 @@ export default function ConversationalInput({
   }
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-10 lg:static lg:flex-col lg:h-auto">
+    <div className="fixed bottom-0 left-0 right-0 z-50 lg:static lg:flex-col lg:h-auto pointer-events-none">
       {/* Chat Interface */}
       {isOpen && (
-        <div className="floating-card bg-card rounded-t-3xl lg:rounded-t-2xl border-t border-border/30 max-h-96 flex flex-col">
+        <div className="floating-card bg-card rounded-t-3xl lg:rounded-t-2xl border-t border-border/30 max-h-96 flex flex-col pointer-events-auto">
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 && (
@@ -159,7 +159,7 @@ export default function ConversationalInput({
       )}
 
       {/* Floating Action Button - Always visible */}
-      <div className="p-4 flex gap-2">
+      <div className="p-4 flex gap-2 ml-96 pointer-events-auto">
         {!isOpen && (
           <>
             <Button
