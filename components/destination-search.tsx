@@ -1,27 +1,80 @@
 "use client"
 
-import { useState } from "react"
-import { Search, MapPin, ArrowRight } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { Search, MapPin, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { mapboxService, type Place } from "@/lib/services/mapboxService"
 
 interface DestinationSearchProps {
-  onStartNavigation: (destination: string) => void
+  onStartNavigation: (destination: { name: string; coordinates: [number, number] }) => void
 }
-
-const SUGGESTIONS = [
-  { name: "Downtown San Francisco", distance: "2.5 mi" },
-  { name: "Golden Gate Park", distance: "4.1 mi" },
-  { name: "Bay Bridge", distance: "3.8 mi" },
-]
 
 export default function DestinationSearch({ onStartNavigation }: DestinationSearchProps) {
   const [searchQuery, setSearchQuery] = useState("")
-  const [showSuggestions, setShowSuggestions] = useState(true)
+  const [suggestions, setSuggestions] = useState<Place[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
-  const handleSearch = (destination: string) => {
-    setSearchQuery(destination)
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout
+      return (query: string) => {
+        clearTimeout(timeoutId)
+        timeoutId = setTimeout(async () => {
+          if (query.trim().length > 0) {
+            setIsSearching(true)
+            try {
+              const results = await mapboxService.searchPlaces(query)
+              setSuggestions(results)
+              setShowSuggestions(true)
+            } catch (error) {
+              console.error("Error searching places:", error)
+              setSuggestions([])
+            } finally {
+              setIsSearching(false)
+            }
+          } else {
+            setSuggestions([])
+            setShowSuggestions(false)
+          }
+        }, 300)
+      }
+    })(),
+    []
+  )
+
+  useEffect(() => {
+    debouncedSearch(searchQuery)
+  }, [searchQuery, debouncedSearch])
+
+  const handleSearch = (place: Place) => {
+    setSearchQuery(place.name)
     setShowSuggestions(false)
-    setTimeout(() => onStartNavigation(destination), 300)
+    setTimeout(() => {
+      onStartNavigation({
+        name: place.name,
+        coordinates: place.coordinates,
+      })
+    }, 300)
+  }
+
+  const handleStartWithQuery = () => {
+    if (suggestions.length > 0) {
+      handleSearch(suggestions[0])
+    } else if (searchQuery.trim()) {
+      // Try to search for the query and use first result
+      mapboxService
+        .searchPlaces(searchQuery)
+        .then((results) => {
+          if (results.length > 0) {
+            handleSearch(results[0])
+          }
+        })
+        .catch((error) => {
+          console.error("Error searching:", error)
+        })
+    }
   }
 
   return (
@@ -47,17 +100,25 @@ export default function DestinationSearch({ onStartNavigation }: DestinationSear
               setSearchQuery(e.target.value)
               setShowSuggestions(true)
             }}
+            onFocus={() => {
+              if (suggestions.length > 0) {
+                setShowSuggestions(true)
+              }
+            }}
             className="flex-1 bg-transparent py-3 px-2 text-lg text-foreground placeholder:text-muted-foreground outline-none"
           />
+          {isSearching && (
+            <Loader2 className="w-5 h-5 text-muted-foreground mr-3 animate-spin" />
+          )}
         </div>
 
         {/* Suggestions */}
-        {showSuggestions && !searchQuery && (
+        {showSuggestions && suggestions.length > 0 && (
           <div className="floating-card bg-card rounded-2xl overflow-hidden border border-border/30 max-h-64 overflow-y-auto">
-            {SUGGESTIONS.map((suggestion, idx) => (
+            {suggestions.map((suggestion) => (
               <button
-                key={idx}
-                onClick={() => handleSearch(suggestion.name)}
+                key={suggestion.id}
+                onClick={() => handleSearch(suggestion)}
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-muted/50 transition-colors border-b border-border/30 last:border-b-0 group touch-target"
               >
                 <div className="flex items-center gap-3">
@@ -66,7 +127,9 @@ export default function DestinationSearch({ onStartNavigation }: DestinationSear
                   </div>
                   <div className="text-left">
                     <p className="font-semibold text-foreground text-lg">{suggestion.name}</p>
-                    <p className="text-sm text-muted-foreground">{suggestion.distance}</p>
+                    {suggestion.address && suggestion.address !== suggestion.name && (
+                      <p className="text-sm text-muted-foreground">{suggestion.address}</p>
+                    )}
                   </div>
                 </div>
                 <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -75,11 +138,21 @@ export default function DestinationSearch({ onStartNavigation }: DestinationSear
           </div>
         )}
 
+        {/* No Results */}
+        {showSuggestions && searchQuery && !isSearching && suggestions.length === 0 && (
+          <div className="floating-card bg-card rounded-2xl p-6 border border-border/30">
+            <p className="text-sm text-muted-foreground text-center">
+              No results found. Try a different search term.
+            </p>
+          </div>
+        )}
+
         {/* Start Navigation Button */}
-        {searchQuery && (
+        {searchQuery && !isSearching && (
           <Button
-            onClick={() => handleSearch(searchQuery)}
-            className="w-full touch-target bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold rounded-2xl"
+            onClick={handleStartWithQuery}
+            disabled={suggestions.length === 0}
+            className="w-full touch-target bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Start Navigation
           </Button>

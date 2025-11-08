@@ -5,7 +5,16 @@ import { Send, Loader2, Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface ConversationalInputProps {
-  onRouteModified: () => void
+  onRouteModified: (modifiedParams: {
+    avoid?: string[]
+    waypoints?: [number, number][]
+    profile?: "driving" | "walking" | "cycling" | "driving-traffic"
+    explanation: string
+  }) => void
+  currentRoute: {
+    origin: [number, number]
+    destination: [number, number]
+  } | null
 }
 
 interface Message {
@@ -15,14 +24,17 @@ interface Message {
   timestamp: Date
 }
 
-export default function ConversationalInput({ onRouteModified }: ConversationalInputProps) {
+export default function ConversationalInput({
+  onRouteModified,
+  currentRoute,
+}: ConversationalInputProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState("")
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || !currentRoute) return
 
     // Add user message
     const userMessage: Message = {
@@ -33,21 +45,60 @@ export default function ConversationalInput({ onRouteModified }: ConversationalI
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const query = inputValue
     setInputValue("")
     setIsLoading(true)
 
-    // Simulate LLM response
-    setTimeout(() => {
+    try {
+      // Call LLM API
+      const response = await fetch("/api/route-modification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userRequest: query,
+          currentRoute: {
+            origin: currentRoute.origin,
+            destination: currentRoute.destination,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to process route modification")
+      }
+
+      const data = await response.json()
+
+      // Add system message with explanation
       const systemMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "system",
-        content: "Found an alternative scenic route through the coast. Would you like to see it?",
+        content: data.explanation || "I'll modify your route as requested.",
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, systemMessage])
       setIsLoading(false)
-      onRouteModified()
-    }, 2000)
+
+      // Notify parent with modified parameters
+      onRouteModified({
+        avoid: data.modifiedParams.avoid,
+        waypoints: data.modifiedParams.waypoints,
+        profile: data.modifiedParams.profile,
+        explanation: data.explanation,
+      })
+    } catch (error) {
+      console.error("Error processing route modification:", error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "system",
+        content: "Sorry, I couldn't process that request. Please try again or rephrase your request.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+      setIsLoading(false)
+    }
   }
 
   return (
