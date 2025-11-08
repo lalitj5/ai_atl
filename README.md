@@ -1,4 +1,4 @@
-# Journey Assist MVP
+# Journey Assist
 
 A conversational navigation interface that allows natural language route modifications through an LLM-powered assistant, integrated with MapBox for visualization and routing.
 
@@ -109,20 +109,6 @@ journey-assist/
 2. Go to [Access Tokens](https://account.mapbox.com/access-tokens/)
 3. Create a new token or use the default public token
 4. Add it to `.env.local` as `NEXT_PUBLIC_MAPBOX_TOKEN`
-
-### OpenAI (Optional)
-
-1. Sign up at [platform.openai.com](https://platform.openai.com/)
-2. Go to API Keys section
-3. Create a new API key
-4. Add it to `.env.local` as `OPENAI_API_KEY`
-
-### Anthropic (Optional)
-
-1. Sign up at [console.anthropic.com](https://console.anthropic.com/)
-2. Go to API Keys section
-3. Create a new API key
-4. Add it to `.env.local` as `ANTHROPIC_API_KEY`
 
 ## Technologies
 
