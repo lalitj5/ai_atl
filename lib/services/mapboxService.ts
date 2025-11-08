@@ -32,7 +32,7 @@ export interface RouteStep {
 export interface Route {
   geometry: {
     coordinates: [number, number][]
-    type: string
+    type: "LineString"
   }
   distance: number // in meters
   duration: number // in seconds

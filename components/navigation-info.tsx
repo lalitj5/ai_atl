@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronRight, MapPin, Clock, Navigation, Send, Loader2, X } from "lucide-react"
+import { ChevronRight, MapPin, Clock, Navigation, Send, Loader2, X, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { type Route, type RouteStep } from "@/lib/services/mapboxService"
 
@@ -15,6 +15,7 @@ interface NavigationInfoProps {
     profile?: "driving" | "walking" | "cycling" | "driving-traffic"
     explanation: string
   }) => void
+  onBackToSearch: () => void
 }
 
 interface Message {
@@ -121,6 +122,7 @@ export default function NavigationInfo({
   destination,
   currentLocation,
   onModifyRoute,
+  onBackToSearch,
 }: NavigationInfoProps) {
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [inputValue, setInputValue] = useState("")
@@ -210,6 +212,19 @@ export default function NavigationInfo({
   return (
     <div className="w-full h-full flex flex-col p-6 bg-background overflow-y-auto">
       <div className="floating-card bg-card rounded-2xl p-6 space-y-4">
+        {/* Back Button */}
+        <div className="flex items-center justify-between pb-2 border-b border-border/30">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBackToSearch}
+            className="h-10 px-3 -ml-2 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Change Destination
+          </Button>
+        </div>
+
         {/* Current Direction */}
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">

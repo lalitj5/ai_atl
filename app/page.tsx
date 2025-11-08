@@ -119,6 +119,16 @@ export default function Home() {
     setNavigationState("navigating")
   }
 
+  const handleBackToSearch = () => {
+    // Reset all navigation state
+    setNavigationState("idle")
+    setDestination(null)
+    setRoute(null)
+    setAlternativeRoutes([])
+    setSelectedRouteIndex(0)
+    setShowComparison(false)
+  }
+
   return (
     <div className="relative w-full h-screen bg-background overflow-hidden">
       {/* Map Container */}
@@ -147,6 +157,7 @@ export default function Home() {
             destination={destination}
             currentLocation={currentLocation}
             onModifyRoute={handleModifyRoute}
+            onBackToSearch={handleBackToSearch}
           />
         )}
         {locationError && navigationState === "navigating" && (

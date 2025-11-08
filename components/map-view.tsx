@@ -8,13 +8,13 @@ interface MapViewProps {
   route?: {
     geometry: {
       coordinates: [number, number][]
-      type: string
+      type: "LineString"
     }
   } | null
   alternativeRoutes?: {
     geometry: {
       coordinates: [number, number][]
-      type: string
+      type: "LineString"
     }
   }[]
   selectedRouteIndex?: number
@@ -119,6 +119,7 @@ export default function MapView({
           type: "geojson",
           data: {
             type: "Feature",
+            properties: {},
             geometry: altRoute.geometry,
           },
         })
@@ -164,6 +165,7 @@ export default function MapView({
         type: "geojson",
         data: {
           type: "Feature",
+          properties: {},
           geometry: route.geometry,
         },
       })
