@@ -58,12 +58,35 @@ export default function MapView({
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       accessToken: mapboxToken,
-      style: "mapbox://styles/mapbox/dark-v11",
+      style: "mapbox://styles/mapbox/standard",
       center: coordinates ? [coordinates.lng, coordinates.lat] : [-122.4194, 37.7749], // Default to San Francisco
       zoom: 13,
+      pitch: 55, // 3D viewing angle
+      minPitch: 0,
+      maxPitch: 85,
     })
 
-    map.current.on("load", () => {
+    map.current.on("style.load", () => {
+      if (!map.current) return
+
+      // Configure Standard style for dark mode with 3D features
+      map.current.setConfigProperty("basemap", "lightPreset", "night")
+      map.current.setConfigProperty("basemap", "show3dObjects", true)
+
+      // Add 3D terrain source
+      map.current.addSource("mapbox-dem", {
+        type: "raster-dem",
+        url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+        tileSize: 512,
+        maxzoom: 14,
+      })
+
+      // Enable 3D terrain with exaggeration for visual impact
+      map.current.setTerrain({
+        source: "mapbox-dem",
+        exaggeration: 1.5,
+      })
+
       setMapLoaded(true)
     })
 
