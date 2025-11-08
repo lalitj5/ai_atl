@@ -4,7 +4,7 @@
  */
 
 export interface RouteModificationParams {
-  avoid?: string[] // e.g., ["highways", "tolls"]
+  avoid?: string[] // e.g., ["motorway", "toll", "ferry"] - Mapbox API values
   waypoints?: [number, number][] // [lng, lat] format
   profile?: "driving" | "walking" | "cycling" | "driving-traffic"
 }
@@ -57,14 +57,15 @@ async function parseWithOpenAI(
 User's current route: from [${request.currentRoute.origin[0]}, ${request.currentRoute.origin[1]}] to [${request.currentRoute.destination[0]}, ${request.currentRoute.destination[1]}]
 
 Return JSON with:
-- avoid: array of things to avoid (e.g., ["highways", "tolls", "ferries"])
+- avoid: array of road types to avoid - MUST use Mapbox API values: "motorway" (highways), "toll" (toll roads), "ferry" (ferries)
 - waypoints: array of [lng, lat] coordinates for intermediate stops (optional)
 - profile: "driving", "walking", "cycling", or "driving-traffic"
 - explanation: human-readable explanation of the route change
 
 Examples:
-- "make it more scenic" -> avoid: ["highways"], explanation: "I'll route you through scenic backroads, avoiding highways."
-- "avoid highways" -> avoid: ["highways"], explanation: "I'll find a route that avoids highways."
+- "make it more scenic" -> avoid: ["motorway"], explanation: "I'll route you through scenic backroads, avoiding highways."
+- "avoid highways" -> avoid: ["motorway"], explanation: "I'll find a route that avoids highways."
+- "avoid tolls" -> avoid: ["toll"], explanation: "I'll find a route that avoids toll roads."
 - "go through downtown" -> waypoints: [downtown_coords], explanation: "I'll route you through downtown."
 - "find the fastest route" -> profile: "driving-traffic", explanation: "I'll find the fastest route considering traffic."`
 
@@ -129,10 +130,12 @@ async function parseWithAnthropic(
         system: `You are a navigation assistant. Parse user requests for route modifications and return structured JSON.
 
 Return JSON with:
-- avoid: array of things to avoid (e.g., ["highways", "tolls"])
+- avoid: array of road types to avoid - MUST use Mapbox values: "motorway", "toll", "ferry"
 - waypoints: array of [lng, lat] coordinates (optional)
 - profile: "driving", "walking", "cycling", or "driving-traffic"
-- explanation: human-readable explanation`,
+- explanation: human-readable explanation
+
+Examples: "avoid highways" -> {"avoid": ["motorway"]}, "avoid tolls" -> {"avoid": ["toll"]}`,
         messages: [
           {
             role: "user",
@@ -180,14 +183,14 @@ function parseWithRules(
 
   // Detect avoid keywords
   if (userRequest.includes("scenic") || userRequest.includes("scenery")) {
-    modifiedParams.avoid = ["highways"]
+    modifiedParams.avoid = ["motorway"]
     explanation = "I'll route you through scenic backroads, avoiding highways."
   } else if (userRequest.includes("avoid highway") || userRequest.includes("no highway")) {
-    modifiedParams.avoid = ["highways"]
+    modifiedParams.avoid = ["motorway"]
     explanation = "I'll find a route that avoids highways."
   } else if (userRequest.includes("avoid toll")) {
-    modifiedParams.avoid = ["tolls"]
-    explanation = "I'll find a route that avoids tolls."
+    modifiedParams.avoid = ["toll"]
+    explanation = "I'll find a route that avoids toll roads."
   } else if (userRequest.includes("fastest") || userRequest.includes("quickest")) {
     modifiedParams.profile = "driving-traffic"
     explanation = "I'll find the fastest route considering traffic."
