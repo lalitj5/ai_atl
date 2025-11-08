@@ -11,7 +11,7 @@ export interface MicrophoneState {
   recognition: any; // SpeechRecognition type
 }
 
-const SILENCE_DURATION = 2000; // 2 seconds
+const SILENCE_DURATION = 3500; // 3.5 seconds
 const SILENCE_THRESHOLD = -20; // -20 dB
 const WAKE_WORD = 'hey journey';
 
@@ -238,11 +238,19 @@ export async function sendToServer(audioBlob: Blob): Promise<string> {
 export async function requestMicrophonePermission(): Promise<boolean> {
   try {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      console.error('Media devices not supported');
       return false;
     }
 
-    const permissionStream = await navigator.mediaDevices.getUserMedia({
+    // Check if microphone devices are available
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioDevices = devices.filter(device => device.kind === 'audioinput');
+
+    if (audioDevices.length === 0) {
+      return false;
+    }
+
+    // Add timeout to prevent hanging forever
+    const getUserMediaPromise = navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
@@ -250,10 +258,15 @@ export async function requestMicrophonePermission(): Promise<boolean> {
       }
     });
 
+    const timeoutPromise = new Promise<MediaStream>((_, reject) => {
+      setTimeout(() => reject(new Error('getUserMedia timeout after 5 seconds')), 5000);
+    });
+
+    const permissionStream = await Promise.race([getUserMediaPromise, timeoutPromise]);
+
     permissionStream.getTracks().forEach(track => track.stop());
     return true;
   } catch (error: any) {
-    // Don't log if it's just a user denying permission on first load
     if (error.name !== 'NotAllowedError') {
       console.error('Error accessing microphone:', error);
     }

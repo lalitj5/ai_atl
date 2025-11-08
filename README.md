@@ -7,6 +7,7 @@ A conversational navigation interface that allows natural language route modific
 - **Real-time Map Display**: MapBox GL JS integration with dark mode optimized for car dashboards
 - **Destination Search**: Real-time autocomplete powered by MapBox Geocoding API
 - **Route Calculation**: Automatic route calculation with turn-by-turn directions
+- **Voice Input**: Natural language voice commands with wake word detection ("Hey Journey") and Azure Whisper transcription
 - **Conversational Route Modification**: LLM-powered natural language interface for route adjustments
 - **Route Comparison**: Visual comparison of multiple route alternatives
 - **Real-time Navigation**: Continuous GPS tracking with turn-by-turn guidance
@@ -15,6 +16,7 @@ A conversational navigation interface that allows natural language route modific
 
 - Node.js 18+ and npm/pnpm
 - MapBox account and API token ([Get one here](https://account.mapbox.com/access-tokens/))
+- Azure OpenAI account with Whisper deployment (for voice input)
 - LLM API key (optional for LLM features):
   - OpenAI API key, or
   - Anthropic API key
@@ -44,6 +46,11 @@ Create a `.env.local` file in the root directory:
 # MapBox API Configuration (Required)
 NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token_here
 
+# Azure OpenAI Configuration (Required for voice input)
+AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
+AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint_here
+AZURE_OPENAI_DEPLOYMENT=whisper  # Optional, defaults to "whisper"
+
 # LLM API Configuration (Optional - for conversational route modification)
 # Choose one:
 OPENAI_API_KEY=your_openai_api_key_here
@@ -53,7 +60,19 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
 **Note**: If no LLM API key is provided, the app will use a simple rule-based fallback for route modifications.
 
-4. **Run the development server**
+4. **Run the backend server** (for voice transcription)
+
+In one terminal, start the Express backend server:
+
+```bash
+node server.js
+```
+
+The backend server will run on [http://localhost:3001](http://localhost:3001)
+
+5. **Run the development server**
+
+In another terminal, start the Next.js development server:
 
 ```bash
 npm run dev
@@ -61,7 +80,7 @@ npm run dev
 pnpm dev
 ```
 
-5. **Open your browser**
+6. **Open your browser**
 
 Navigate to [http://localhost:3000](http://localhost:3000)
 
@@ -69,13 +88,17 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 
 1. **Search for a destination**: Type in the search bar to find your destination
 2. **Start navigation**: Click "Start Navigation" to calculate and display the route
-3. **Modify route**: Click "Modify Route" or use the conversational input to request changes:
+3. **Use voice input**: Click the microphone button (top-right corner) to enable voice commands
+   - Say "Hey Journey" to activate recording
+   - Speak your command naturally
+   - Recording stops automatically after 3.5 seconds of silence
+4. **Modify route**: Click "Modify Route" or use voice/text input to request changes:
    - "Make it more scenic"
    - "Avoid highways"
    - "Find the fastest route"
    - "Go through downtown"
-4. **Compare routes**: Review alternative routes and select your preferred option
-5. **Navigate**: Follow turn-by-turn directions with real-time GPS tracking
+5. **Compare routes**: Review alternative routes and select your preferred option
+6. **Navigate**: Follow turn-by-turn directions with real-time GPS tracking
 
 ## Project Structure
 
@@ -96,9 +119,12 @@ journey-assist/
 │   └── services/
 │       ├── mapboxService.ts       # MapBox API integration
 │       ├── geolocationService.ts  # Browser geolocation
-│       └── llmService.ts          # LLM integration
-└── hooks/
-    └── useGeolocation.ts          # Geolocation React hook
+│       ├── llmService.ts          # LLM integration
+│       └── microphoneService.ts   # Voice input & wake word detection
+├── hooks/
+│   ├── useGeolocation.ts          # Geolocation React hook
+│   └── useMicrophone.ts           # Voice input React hook
+└── server.js                       # Express backend for Azure Whisper transcription
 ```
 
 ## API Keys Setup
@@ -124,13 +150,28 @@ journey-assist/
 3. Create a new API key
 4. Add it to `.env.local` as `ANTHROPIC_API_KEY`
 
+### Azure OpenAI (Required for Voice Input)
+
+1. Create an Azure account at [portal.azure.com](https://portal.azure.com/)
+2. Create an Azure OpenAI resource
+3. Deploy a Whisper model (e.g., `whisper`)
+4. Get your API key and endpoint from the Azure portal
+5. Add them to `.env.local`:
+   - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key
+   - `AZURE_OPENAI_ENDPOINT`: Your Azure OpenAI endpoint URL
+   - `AZURE_OPENAI_DEPLOYMENT`: Your Whisper deployment name (defaults to "whisper")
+
 ## Technologies
 
 - **Next.js 16**: React framework with App Router
+- **React 19**: Latest React features
 - **TypeScript**: Type-safe development
 - **MapBox GL JS**: Interactive maps and routing
-- **Tailwind CSS**: Utility-first styling
+- **Tailwind CSS 4**: Utility-first styling
 - **Radix UI**: Accessible component primitives
+- **Express**: Backend server for voice transcription
+- **Azure OpenAI Whisper**: Speech-to-text transcription
+- **Web Speech API**: Browser-based wake word detection
 
 ## Development
 
@@ -150,10 +191,12 @@ npm run lint
 
 ## Browser Support
 
-- Chrome/Edge (recommended)
-- Firefox
-- Safari
+- **Chrome/Edge (required for voice input)**: Full support including Web Speech API for wake word detection
+- Firefox: Map and navigation features only (no voice input)
+- Safari: Map and navigation features only (no voice input)
 - Requires browser geolocation API support
+
+**Note**: Voice input with wake word detection ("Hey Journey") requires Chrome or Edge browser due to Web Speech API compatibility.
 
 ## License
 

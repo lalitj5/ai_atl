@@ -103,15 +103,15 @@ export function useMicrophone() {
 
   // Try to start listening on mount (default unmuted)
   // This may fail due to browser requiring user gesture, but that's ok
-  useEffect(() => {
-    const tryAutoStart = async () => {
-      const success = await startListening(true);
-      if (!success) {
-        console.log('Auto-start failed (expected on first load). Click the microphone button to enable.');
-      }
-    };
-    tryAutoStart();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // TEMPORARILY DISABLED FOR DEBUGGING
+  // useEffect(() => {
+  //   console.log('Component mounted, trying auto-start');
+  //   const tryAutoStart = async () => {
+  //     const result = await startListening(true);
+  //     console.log('Auto-start result:', result);
+  //   };
+  //   tryAutoStart();
+  // }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup on unmount
   useEffect(() => {
