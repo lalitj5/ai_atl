@@ -98,13 +98,40 @@ export default function Home() {
         }
       )
 
-      // Include current route as first option
-      if (route) {
-        setAlternativeRoutes([route, ...alternatives])
-      } else {
-        setAlternativeRoutes(alternatives)
+      // Filter out duplicate/similar routes
+      const uniqueRoutes: typeof alternatives = []
+      for (const alt of alternatives) {
+        // Check if this route is significantly different from all already-added routes
+        const isDuplicate = uniqueRoutes.some(
+          (existing) => !mapboxService.isSignificantlyDifferent(existing, alt)
+        )
+        if (!isDuplicate) {
+          uniqueRoutes.push(alt)
+        }
       }
 
+      // Build final route list including current route
+      let allRoutes: typeof alternatives = []
+      if (route) {
+        // Filter unique routes that are different from current route
+        const differentRoutes = uniqueRoutes.filter((alt) =>
+          mapboxService.isSignificantlyDifferent(route, alt)
+        )
+        allRoutes = [route, ...differentRoutes]
+      } else {
+        allRoutes = uniqueRoutes
+      }
+
+      // Check if we have meaningful alternatives (at least 2 different routes)
+      if (allRoutes.length < 2) {
+        setNavigationState("navigating")
+        alert(
+          "Unfortunately, there aren't significantly different alternative routes available for this trip. The current route is already optimal for your preferences."
+        )
+        return
+      }
+
+      setAlternativeRoutes(allRoutes)
       setShowComparison(true)
       setNavigationState("comparing-routes")
     } catch (error) {

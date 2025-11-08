@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Search, MapPin, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { mapboxService, type Place } from "@/lib/services/mapboxService"
+import { useGeolocation } from "@/hooks/useGeolocation"
 
 interface DestinationSearchProps {
   onStartNavigation: (destination: { name: string; coordinates: [number, number] }) => void
@@ -15,6 +16,9 @@ export default function DestinationSearch({ onStartNavigation }: DestinationSear
   const [isSearching, setIsSearching] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
 
+  // Get user's location for proximity biasing
+  const { coordinates: userLocation } = useGeolocation()
+
   // Debounced search function
   const debouncedSearch = useCallback(
     (() => {
@@ -25,7 +29,11 @@ export default function DestinationSearch({ onStartNavigation }: DestinationSear
           if (query.trim().length > 0) {
             setIsSearching(true)
             try {
-              const results = await mapboxService.searchPlaces(query)
+              // Pass user location as [lng, lat]
+              const userCoords = userLocation
+                ? ([userLocation.lng, userLocation.lat] as [number, number])
+                : undefined
+              const results = await mapboxService.searchPlaces(query, userCoords)
               setSuggestions(results)
               setShowSuggestions(true)
             } catch (error) {
@@ -41,39 +49,58 @@ export default function DestinationSearch({ onStartNavigation }: DestinationSear
         }, 300)
       }
     })(),
-    []
+    [userLocation]
   )
 
   useEffect(() => {
     debouncedSearch(searchQuery)
   }, [searchQuery, debouncedSearch])
 
-  const handleSearch = (place: Place) => {
+  const handleSearch = async (place: Place) => {
     setSearchQuery(place.name)
     setShowSuggestions(false)
-    setTimeout(() => {
-      onStartNavigation({
-        name: place.name,
-        coordinates: place.coordinates,
-      })
-    }, 300)
+    setIsSearching(true) // Show loading state
+
+    try {
+      // Retrieve full place details with coordinates
+      const fullPlace = await mapboxService.retrievePlace(place.id)
+
+      setTimeout(() => {
+        onStartNavigation({
+          name: fullPlace.name,
+          coordinates: fullPlace.coordinates,
+        })
+        setIsSearching(false)
+      }, 300)
+    } catch (error) {
+      console.error("Error retrieving place details:", error)
+      setIsSearching(false)
+      // Could show error toast here
+    }
   }
 
-  const handleStartWithQuery = () => {
+  const handleStartWithQuery = async () => {
     if (suggestions.length > 0) {
-      handleSearch(suggestions[0])
+      await handleSearch(suggestions[0])
     } else if (searchQuery.trim()) {
       // Try to search for the query and use first result
-      mapboxService
-        .searchPlaces(searchQuery)
-        .then((results) => {
-          if (results.length > 0) {
-            handleSearch(results[0])
-          }
-        })
-        .catch((error) => {
-          console.error("Error searching:", error)
-        })
+      const userCoords = userLocation
+        ? ([userLocation.lng, userLocation.lat] as [number, number])
+        : undefined
+
+      setIsSearching(true)
+
+      try {
+        const results = await mapboxService.searchPlaces(searchQuery, userCoords)
+        if (results.length > 0) {
+          await handleSearch(results[0])
+        } else {
+          setIsSearching(false)
+        }
+      } catch (error) {
+        console.error("Error searching:", error)
+        setIsSearching(false)
+      }
     }
   }
 
